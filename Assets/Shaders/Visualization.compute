@@ -1,0 +1,29 @@
+#pragma kernel CSMain
+
+RWStructuredBuffer<float2> psiIn;
+RWTexture2D<float4> result;
+int resolution;
+
+float2 psi(int x, int y) {
+    if (x == 0 || x == resolution - 1 || y == 0 || y == resolution - 1) {
+        return 0;
+    }
+    return psiIn[x + resolution * y];
+}
+
+[numthreads(32,32,1)]
+void CSMain (uint3 id : SV_DispatchThreadID) {
+    if (id.x == 0 || id.x == resolution - 1 || id.y == 0 || id.y == resolution - 1) {
+        result[id.xy] = float4(0, 0, 0, 1.0f);
+        return;
+    }
+    float dx = 1.0 / resolution;
+    float2 d2PsiByDx2 = (psi(id.x + 1, id.y) - 2 * psi(id.x, id.y) + psi(id.x - 1, id.y)) / (dx * dx);
+    float2 d2PsiByDy2 = (psi(id.x, id.y + 1) - 2 * psi(id.x, id.y) + psi(id.x, id.y - 1)) / (dx * dx);
+    // result[id.xy] = float4(d2PsiByDx2.x, d2PsiByDy2.x, 0, 1);
+    float2 _psi = psiIn[id.x + resolution * id.y];
+    // result[id.xy] = float4(_psi.x + 0.5, _psi.y + 0.5, 0, 1.0f);
+    // result[id.xy] = float4(intensity * (_psi.x+0.5), intensity * (_psi.y + 0.5), intensity, 1.0f);
+    float intensity = _psi.x*_psi.x + _psi.y*_psi.y;
+    result[id.xy] = float4(intensity, intensity, intensity, 1.0f);
+}

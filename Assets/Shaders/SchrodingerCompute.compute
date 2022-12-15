@@ -1,0 +1,58 @@
+#pragma kernel process
+#pragma kernel initialize
+
+RWStructuredBuffer<float2> psi;
+RWStructuredBuffer<float> potential;
+
+int resolution;
+static const float PI = 3.14159265;
+static const float dt = 1e-9;
+int speed;
+
+float V(int x, int y) {
+    if (x == 0 || x == resolution - 1 || y == 0 || y == resolution - 1) {
+        return 1e11;
+    }
+    return -5e5 * potential[x + resolution * y];
+}
+
+float2 psi_(int x, int y) {
+    if (x == 0 || x == resolution - 1 || y == 0 || y == resolution - 1) {
+        return 0;
+    }
+    return psi[x + resolution * y];
+}
+
+float2 timesI(float2 number) {
+    return float2(-number.y, number.x);
+}
+
+[numthreads(32,32,1)]
+void process (uint3 id : SV_DispatchThreadID) {
+    if (id.x == 0 || id.x == resolution - 1 || id.y == 0 || id.y == resolution - 1) {
+        return;
+    }
+    float dx = 1.0 / resolution;
+    float2 d2PsiByDx2 = (psi_(id.x + 1, id.y) - 2 * psi_(id.x, id.y) + psi_(id.x - 1, id.y)) / (dx * dx);
+    float2 d2PsiByDy2 = (psi_(id.x, id.y + 1) - 2 * psi_(id.x, id.y) + psi_(id.x, id.y - 1)) / (dx * dx);
+    float2 dPsiByDt = timesI((d2PsiByDx2 + d2PsiByDy2) - psi_(id.x, id.y) * V(id.x, id.y));
+    float2 result = psi[id.x + resolution * id.y] + dPsiByDt * dt;
+    GroupMemoryBarrierWithGroupSync();
+    psi[id.x + resolution * id.y] = result;
+}
+
+static const float mu = 0.5;
+static const float sigma = 0.05;
+
+[numthreads(32,32,1)]
+void initialize(uint3 id: SV_DispatchThreadID) {
+    float x = (float) id.x / resolution;
+    float y = (float) id.y / resolution;
+    if (x >= 0.25 && x <= 0.75) {
+        psi[id.x + resolution * id.y] = float2(sin(4*PI*(x-0.25)), sin(4*PI*(x-0.125))) * sin(2*PI*(x-0.25)) * sin(PI*y);
+    } else {
+        psi[id.x + resolution*id.y] = float2(0, 0);
+    }
+    // psi[id.x + resolution * id.y] = float2((sin(16*x*PI)) * sin(y * PI), 0) * 0.5;
+    potential[id.x + resolution * id.y] = 0; // exp(-(x-mu)*(x-mu) / (2*sigma*sigma));
+}
