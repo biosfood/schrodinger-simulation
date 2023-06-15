@@ -12,6 +12,7 @@ public class Display : MonoBehaviour
     public int speed = 100;
     public Text time;
     public int elapsedTime = 0;
+    public bool showTime = true;
 
     private void Start() {
         psi = new ComputeBuffer(resolution * resolution * 8, 8);
@@ -27,7 +28,7 @@ public class Display : MonoBehaviour
         visualization.SetInt("resolution", resolution);
         schrodinger.SetBuffer(kernel, "psi", psi);
         schrodinger.SetBuffer(kernel, "potential", potential);
-        schrodinger.Dispatch(kernel, 8, 8, 1);
+        schrodinger.Dispatch(kernel, resolution/32, resolution/32, 1);
     }
 
     private void Update() {
@@ -36,13 +37,17 @@ public class Display : MonoBehaviour
         schrodinger.SetBuffer(kernel, "psi", psi);
         schrodinger.SetBuffer(kernel, "potential", potential);
         for (int i = 0; i < speed; i++) {
-            schrodinger.Dispatch(kernel, 8, 8, 1);
+            schrodinger.Dispatch(kernel, resolution/32, resolution/32, 1);
         }
         elapsedTime += speed;
-        time.text = string.Format("time: {0} us", (float)elapsedTime / 200);
         visualization.SetBuffer(0, "psiIn", psi);
         visualization.SetTexture(0, "result", texture);
-        visualization.Dispatch(0, 8, 8, 1);
+        visualization.Dispatch(0, resolution/32, resolution/32, 1);
+        if (showTime) {
+            time.text = string.Format("time: {0} us", (float)elapsedTime / 200);
+        } else {
+            time.text = "";
+        }
     }
 
     private void OnRenderImage(RenderTexture before, RenderTexture destination) {

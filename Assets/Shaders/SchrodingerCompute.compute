@@ -41,9 +41,6 @@ void process (uint3 id : SV_DispatchThreadID) {
     psi[id.x + resolution * id.y] = result;
 }
 
-static const float mu = 0.5;
-static const float sigma = 0.05;
-
 [numthreads(32,32,1)]
 void initialize(uint3 id: SV_DispatchThreadID) {
     float x = (float) id.x / resolution;
@@ -54,5 +51,5 @@ void initialize(uint3 id: SV_DispatchThreadID) {
         psi[id.x + resolution*id.y] = float2(0, 0);
     }
     // psi[id.x + resolution * id.y] = float2((sin(16*x*PI)) * sin(y * PI), 0) * 0.5;
-    potential[id.x + resolution * id.y] = 0; // exp(-(x-mu)*(x-mu) / (2*sigma*sigma));
+    potential[id.x + resolution * id.y] = 0.1 * x + 0.1*y; // exp(-(x-mu)*(x-mu) / (2*sigma*sigma));
 }
